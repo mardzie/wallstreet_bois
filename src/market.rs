@@ -16,11 +16,11 @@ pub struct MarketPlugin;
 
 impl Plugin for MarketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, init);
+        app.add_systems(Startup, setup);
     }
 }
 
-fn init(mut command: Commands) {
+fn setup(mut command: Commands) {
     let mut batch = Vec::with_capacity(ALL_STOCKS.len());
     for (name, ticker, about, sector, value) in ALL_STOCKS.iter() {
         batch.push((
