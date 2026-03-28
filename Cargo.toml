@@ -1,0 +1,26 @@
+[package]
+name = "wallstreet_bois"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.18.1"
+gamplo = "0.2.3"
+log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }
+serde = "1.0.228"
+serde_json = "1.0.149"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+strip = "debuginfo"
