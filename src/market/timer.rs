@@ -7,7 +7,8 @@ pub struct MarketTimePlugin;
 
 impl Plugin for MarketTimePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(FixedFirst, (countdown, market_time_finished).chain());
+        app.init_resource::<MarketTime>()
+            .add_systems(FixedFirst, (countdown, market_time_finished).chain());
     }
 }
 
