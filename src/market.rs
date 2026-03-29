@@ -4,7 +4,7 @@ use crate::{
     all_stocks::ALL_STOCKS,
     market::{
         stock::{Performance, Stock, Value},
-        timer::{MarketTimeFinishedEvent, MarketTimePlugin},
+        timer::{MarketTimeFinishedEvent, MarketTimePlugin, MarketUpdateTimeFinishedEvent},
     },
 };
 
@@ -19,16 +19,14 @@ impl Plugin for MarketPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MarketTimePlugin)
             .add_observer(on_market_time_finished)
+            .add_observer(on_market_update_time_finished)
+            .add_observer(on_update_performance)
             .add_systems(Startup, setup)
-            .add_systems(
-                FixedUpdate,
-                (simulate_stocks, update_performance)
-                    .chain()
-                    .in_set(MarketSet),
-            )
-            .add_systems(
-                FixedPostUpdate,
-                |query: Query<(&Stock, &Value, &Performance)>| {
+            .add_observer(
+                |_: On<UpdatePerformanceEvent>,
+                 time: Res<Time>,
+                 query: Query<(&Stock, &Value, &Performance)>| {
+                    println!("{:.2}", time.elapsed_secs());
                     for (stock, value, perf) in query {
                         println!(
                             "{} ({}): {:.2} $ {:.2} ({:.2} %)",
@@ -41,13 +39,12 @@ impl Plugin for MarketPlugin {
                     }
                     println!();
                 },
-            )
-            .configure_sets(FixedUpdate, MarketSet);
+            );
     }
 }
 
-#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MarketSet;
+#[derive(Event, Debug)]
+pub struct UpdatePerformanceEvent;
 
 fn setup(mut command: Commands) {
     let mut batch = Vec::with_capacity(ALL_STOCKS.len());
@@ -72,16 +69,25 @@ fn on_market_time_finished(
     }
 }
 
-fn simulate_stocks(stocks: Query<&mut Value, (With<Stock>, With<Performance>)>) {
+fn on_market_update_time_finished(
+    _: On<MarketUpdateTimeFinishedEvent>,
+    mut commands: Commands,
+    stocks: Query<&mut Value, (With<Stock>, With<Performance>)>,
+) {
     for mut value in stocks {
         let new_current = value
             .current()
             .wrapping_add_signed(rand::random_range(-200..200));
         value.update_current_value(new_current);
     }
+
+    commands.trigger(UpdatePerformanceEvent);
 }
 
-fn update_performance(stocks: Query<(&Value, &mut Performance), With<Stock>>) {
+fn on_update_performance(
+    _: On<UpdatePerformanceEvent>,
+    stocks: Query<(&Value, &mut Performance), With<Stock>>,
+) {
     for (value, mut performance) in stocks {
         performance.update_change(
             value.calculate_change_abs(),
