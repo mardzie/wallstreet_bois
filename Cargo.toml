@@ -7,6 +7,7 @@ edition = "2024"
 bevy = "0.18.1"
 gamplo = "0.2.3"
 log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }
+rand = "0.10.0"
 serde = "1.0.228"
 serde_json = "1.0.149"
 

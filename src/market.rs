@@ -3,22 +3,35 @@ use bevy::prelude::*;
 use crate::{
     all_stocks::ALL_STOCKS,
     market::{
-        sector::Sector,
         stock::{Performance, Stock, Value},
+        timer::{MarketTimeFinishedEvent, MarketTimePlugin},
     },
 };
 
 pub mod chart;
 pub mod sector;
 pub mod stock;
+pub mod timer;
 
 pub struct MarketPlugin;
 
 impl Plugin for MarketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup);
+        app.add_plugins(MarketTimePlugin)
+            .add_observer(on_market_time_finished)
+            .add_systems(Startup, setup)
+            .add_systems(
+                FixedUpdate,
+                (simulate_stocks, update_performance)
+                    .chain()
+                    .in_set(MarketSet),
+            )
+            .configure_sets(FixedUpdate, MarketSet);
     }
 }
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MarketSet;
 
 fn setup(mut command: Commands) {
     let mut batch = Vec::with_capacity(ALL_STOCKS.len());
@@ -30,4 +43,33 @@ fn setup(mut command: Commands) {
         ));
     }
     command.spawn_batch(batch);
+}
+
+fn on_market_time_finished(
+    _: On<MarketTimeFinishedEvent>,
+    query: Query<(&mut Value, &mut Performance), With<Stock>>,
+) {
+    for (mut value, mut performance) in query {
+        let new_current = value.current();
+        let candle = value.close_candle(new_current);
+        let _ = performance.push_candle(candle);
+    }
+}
+
+fn simulate_stocks(stocks: Query<&mut Value, (With<Stock>, With<Performance>)>) {
+    for mut value in stocks {
+        let new_current = value
+            .current()
+            .strict_add_signed(rand::random_range(-20..20));
+        value.update_current_value(new_current);
+    }
+}
+
+fn update_performance(stocks: Query<(&Value, &mut Performance), With<Stock>>) {
+    for (value, mut performance) in stocks {
+        performance.update_change(
+            value.calculate_change_abs(),
+            value.calculate_change_percentage(),
+        );
+    }
 }

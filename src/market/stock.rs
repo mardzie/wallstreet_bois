@@ -7,7 +7,7 @@ use crate::market::{chart::Candle, sector::Sector};
 /// The history to preserve for each stock.
 pub const HISTORY_LENGHT: usize = 1024 * 16;
 
-#[derive(Debug, Component)]
+#[derive(Component, Debug)]
 pub struct Stock {
     name: String,
     ticker: String,
@@ -16,7 +16,7 @@ pub struct Stock {
     sector: Sector,
 }
 
-#[derive(Debug, Component)]
+#[derive(Component, Debug)]
 pub struct Value {
     /// The current Value of the Stock in ct.
     current: u32,
@@ -25,7 +25,7 @@ pub struct Value {
     min: u32,
 }
 
-#[derive(Debug, Default, Component)]
+#[derive(Component, Debug, Default)]
 pub struct Performance {
     change_abs: i32,
     change_percent: i32,
