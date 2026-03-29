@@ -185,4 +185,12 @@ impl Performance {
 
         old_candle
     }
+
+    pub fn change_abs(&self) -> i32 {
+        self.change_abs
+    }
+
+    pub fn change_percent(&self) -> i32 {
+        self.change_percent
+    }
 }
