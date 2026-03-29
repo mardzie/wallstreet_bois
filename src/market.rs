@@ -26,6 +26,22 @@ impl Plugin for MarketPlugin {
                     .chain()
                     .in_set(MarketSet),
             )
+            .add_systems(
+                FixedPostUpdate,
+                |query: Query<(&Stock, &Value, &Performance)>| {
+                    for (stock, value, perf) in query {
+                        println!(
+                            "{} ({}): {:.2} $ {:.2} ({:.2} %)",
+                            stock.name(),
+                            stock.ticker(),
+                            value.current() as f32 / 100.0,
+                            perf.change_abs() as f32 / 100.0,
+                            perf.change_percent() as f32 / 100.0
+                        );
+                    }
+                    println!();
+                },
+            )
             .configure_sets(FixedUpdate, MarketSet);
     }
 }
