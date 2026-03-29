@@ -7,6 +7,8 @@ use crate::market::{chart::Candle, sector::Sector};
 /// The history to preserve for each stock.
 pub const HISTORY_LENGHT: usize = 1024 * 16;
 
+pub const DEFAULT_CANDLE_HISTORY_SIZE: usize = 24;
+
 #[derive(Component, Debug)]
 pub struct Stock {
     name: String,
@@ -30,6 +32,7 @@ pub struct Performance {
     change_abs: i32,
     change_percent: i32,
     history: VecDeque<Candle>,
+    volatility: i32,
 }
 
 impl Stock {
@@ -161,6 +164,7 @@ impl Performance {
             change_abs,
             change_percent,
             history: VecDeque::with_capacity(HISTORY_LENGHT),
+            volatility: change_abs,
         }
     }
 
@@ -170,6 +174,7 @@ impl Performance {
     pub fn update_change(&mut self, abs: i32, percent: i32) {
         self.change_abs = abs;
         self.change_percent = percent;
+        self.volatility = self.calculate_volatility(DEFAULT_CANDLE_HISTORY_SIZE);
     }
 
     pub fn history(&self) -> &VecDeque<Candle> {
@@ -183,6 +188,8 @@ impl Performance {
 
         self.history.push_front(candle);
 
+        self.volatility = self.calculate_volatility(DEFAULT_CANDLE_HISTORY_SIZE);
+
         old_candle
     }
 
@@ -192,5 +199,68 @@ impl Performance {
 
     pub fn change_percent(&self) -> i32 {
         self.change_percent
+    }
+
+    pub fn volatility(&self) -> i32 {
+        self.volatility
+    }
+
+    pub fn calculate_volatility(&self, candles: usize) -> i32 {
+        if self.history.is_empty() {
+            return 0;
+        };
+
+        let iter = self
+            .history
+            .iter()
+            .take(candles)
+            .map(|candle| candle.close());
+        let count = iter.clone().count() as i32;
+        let mean = iter
+            .clone()
+            .fold(0i32, |acc, close| acc + close as i32)
+            .wrapping_div(count);
+        let variance = iter
+            .map(|close| close as i32 - mean)
+            .map(|deviation| deviation.pow(2) / 100)
+            .sum::<i32>()
+            .wrapping_div(count);
+        (variance * 100).isqrt() // Scale the variance up to not leave a decimal point behind.
+    }
+}
+
+#[cfg(test)]
+mod stock_test {
+    use crate::market::{chart::Candle, stock::Performance};
+
+    #[test]
+    fn volatility_calculation_test() {
+        let mut perf = Performance::new(0, 0);
+        let v = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+        for v in v.iter() {
+            perf.push_candle(Candle::new(*v, *v, *v, *v));
+        }
+
+        assert_eq!(5500, v.iter().sum::<u32>());
+        let mean = v.iter().fold(0, |acc, x| acc + x) / v.len() as u32;
+        assert_eq!(550, mean);
+        let deviation = v.iter().map(|x| *x as i32 - mean as i32);
+        assert_eq!(
+            vec![-450, -350, -250, -150, -50, 50, 150, 250, 350, 450],
+            deviation.clone().collect::<Vec<i32>>()
+        );
+        let deviation_squared = deviation.map(|x| x.pow(2) as u32 / 100);
+        assert_eq!(
+            vec![2025, 1225, 625, 225, 25, 25, 225, 625, 1225, 2025],
+            deviation_squared.clone().collect::<Vec<u32>>()
+        );
+        let deviation_squared_sum = deviation_squared.sum::<u32>();
+        assert_eq!(8250, deviation_squared_sum);
+        let variance = deviation_squared_sum / v.len() as u32;
+        assert_eq!(825, variance);
+        let standart_deviation = (variance * 100).isqrt();
+        assert_eq!(287, standart_deviation);
+
+        assert_eq!(287, perf.calculate_volatility(v.len()));
     }
 }

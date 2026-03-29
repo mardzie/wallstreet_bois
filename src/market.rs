@@ -29,19 +29,24 @@ impl Plugin for MarketPlugin {
                     println!("{:.2}", time.elapsed_secs());
                     for (stock, value, perf) in query {
                         println!(
-                            "{} ({}): {:.2} $ {:.2} ({:.2} %)",
+                            "{} ({}): {:.2} $ {:.2} ({:.2} %) : Volatility: {:.2}",
                             stock.name(),
                             stock.ticker(),
                             value.current() as f32 / 100.0,
                             perf.change_abs() as f32 / 100.0,
-                            perf.change_percent() as f32 / 100.0
+                            perf.change_percent() as f32 / 100.0,
+                            perf.volatility() as f32 / 100.0,
                         );
                     }
                     println!();
                 },
-            );
+            )
+            .configure_sets(FixedUpdate, MarketCalculationsSet);
     }
 }
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MarketCalculationsSet;
 
 #[derive(Event, Debug)]
 pub struct UpdatePerformanceEvent;
