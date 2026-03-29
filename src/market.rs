@@ -76,7 +76,7 @@ fn simulate_stocks(stocks: Query<&mut Value, (With<Stock>, With<Performance>)>) 
     for mut value in stocks {
         let new_current = value
             .current()
-            .strict_add_signed(rand::random_range(-20..20));
+            .wrapping_add_signed(rand::random_range(-200..200));
         value.update_current_value(new_current);
     }
 }
