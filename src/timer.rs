@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 
 pub const MARKET_TIMER_DEFAULT_DURATION: Duration = Duration::from_secs(60);
 pub const MARKET_UPDATE_DEFAULT_INTERVALL: u32 = 60;
@@ -13,6 +13,8 @@ impl Plugin for MarketTimePlugin {
         app.init_resource::<MarketTimerIntervall>()
             .init_resource::<MarketTimer>()
             .init_resource::<MarketUpdateTimer>()
+            .add_schedule(Schedule::new(MarketTimeFinishedSchedule))
+            .add_schedule(Schedule::new(MarketTimeUpdateSchedule))
             .add_observer(on_update_market_timer_interval)
             .add_systems(
                 FixedFirst,
@@ -38,11 +40,17 @@ pub struct MarketTimer(Timer);
 #[derive(Event, Debug)]
 pub struct MarketTimeFinishedEvent;
 
+#[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MarketTimeFinishedSchedule;
+
 #[derive(Resource, Debug, Deref, DerefMut)]
 pub struct MarketUpdateTimer(Timer);
 
 #[derive(Event, Debug)]
 pub struct MarketUpdateTimeFinishedEvent;
+
+#[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MarketTimeUpdateSchedule;
 
 impl Default for MarketTimerIntervall {
     fn default() -> Self {
@@ -89,9 +97,14 @@ fn countdown_market_timer(time: Res<Time>, mut market_timer: ResMut<MarketTimer>
     market_timer.tick(time.delta());
 }
 
-fn market_timer_finished(mut commands: Commands, market_timer: Res<MarketTimer>) {
-    if market_timer.is_finished() {
-        commands.trigger(MarketTimeFinishedEvent);
+fn market_timer_finished(world: &mut World) {
+    if world
+        .get_resource::<MarketTimer>()
+        .expect("`MarketTimer` must exist at this point!")
+        .is_finished()
+    {
+        world.trigger(MarketTimeFinishedEvent);
+        world.run_schedule(MarketTimeFinishedSchedule);
     }
 }
 
@@ -102,11 +115,13 @@ fn countdown_market_update_timer(
     market_update_timer.tick(time.delta());
 }
 
-fn market_update_timer_finished(
-    mut commands: Commands,
-    market_update_timer: Res<MarketUpdateTimer>,
-) {
-    if market_update_timer.is_finished() {
-        commands.trigger(MarketUpdateTimeFinishedEvent);
+fn market_update_timer_finished(world: &mut World) {
+    if world
+        .get_resource::<MarketUpdateTimer>()
+        .expect("`MarketUpdateTimer` must exist at this point!")
+        .is_finished()
+    {
+        world.trigger(MarketUpdateTimeFinishedEvent);
+        world.run_schedule(MarketTimeUpdateSchedule);
     }
 }
