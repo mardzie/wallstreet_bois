@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 pub const MARKET_TIMER_DEFAULT_DURATION: Duration = Duration::from_secs(60);
 pub const MARKET_UPDATE_DEFAULT_INTERVALL: u32 = 60;
+pub const MIN_MARKET_UPDATE_INTERVALL: Duration = Duration::from_millis(1000);
 
 pub struct MarketTimePlugin;
 
@@ -79,7 +80,9 @@ fn on_update_market_timer_interval(
     };
 
     market_timer.set_duration(new_duration);
-    market_update_timer.set_duration(new_duration / MARKET_UPDATE_DEFAULT_INTERVALL);
+    market_update_timer.set_duration(
+        (new_duration / MARKET_UPDATE_DEFAULT_INTERVALL).max(MIN_MARKET_UPDATE_INTERVALL),
+    );
 }
 
 fn countdown_market_timer(time: Res<Time>, mut market_timer: ResMut<MarketTimer>) {

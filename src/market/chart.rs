@@ -1,13 +1,13 @@
 #[derive(Debug, Clone)]
 pub struct Candle {
-    open: u32,
-    close: u32,
-    max: u32,
-    min: u32,
+    open: u64,
+    close: u64,
+    max: u64,
+    min: u64,
 }
 
 impl Candle {
-    pub fn new(open: u32, close: u32, max: u32, min: u32) -> Self {
+    pub fn new(open: u64, close: u64, max: u64, min: u64) -> Self {
         Self {
             open,
             close,
@@ -16,19 +16,19 @@ impl Candle {
         }
     }
 
-    pub fn open(&self) -> u32 {
+    pub fn open(&self) -> u64 {
         self.open
     }
 
-    pub fn close(&self) -> u32 {
+    pub fn close(&self) -> u64 {
         self.close
     }
 
-    pub fn max(&self) -> u32 {
+    pub fn max(&self) -> u64 {
         self.max
     }
 
-    pub fn min(&self) -> u32 {
+    pub fn min(&self) -> u64 {
         self.min
     }
 }

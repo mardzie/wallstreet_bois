@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use bevy::prelude::*;
 
-use crate::market::{chart::Candle, sector::Sector};
+use crate::market::chart::Candle;
 
 /// The history to preserve for each stock.
 pub const HISTORY_LENGHT: usize = 1024 * 16;
@@ -11,60 +11,41 @@ pub const DEFAULT_CANDLE_HISTORY_SIZE: usize = 24;
 
 #[derive(Component, Debug)]
 pub struct Stock {
-    name: String,
     ticker: String,
-    /// A description of the stocks company.
-    about: String,
-    sector: Sector,
 }
 
 #[derive(Component, Debug)]
-pub struct Value {
+pub struct ShareValue {
     /// The current Value of the Stock in ct.
-    current: u32,
-    open: u32,
-    max: u32,
-    min: u32,
+    current: u64,
+    open: u64,
+    max: u64,
+    min: u64,
 }
 
 #[derive(Component, Debug, Default)]
-pub struct Performance {
-    change_abs: i32,
-    change_percent: i32,
+pub struct SharePerformance {
+    change_abs: i64,
+    change_percent: i64,
     history: VecDeque<Candle>,
-    volatility: i32,
+    volatility: i64,
 }
 
 impl Stock {
-    pub fn new(name: &str, ticker: &str, about: &str, sector: Sector) -> Self {
+    pub fn new(ticker: &str) -> Self {
         Self {
-            name: name.to_string(),
             ticker: ticker.to_uppercase(),
-            about: about.to_string(),
-            sector,
         }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     pub fn ticker(&self) -> &str {
         &self.ticker
     }
-
-    pub fn about(&self) -> &str {
-        &self.about
-    }
-
-    pub fn sector(&self) -> &Sector {
-        &self.sector
-    }
 }
 
-impl Value {
+impl ShareValue {
     /// New Value from cent values.
-    pub fn new(current: u32, open: u32, max: u32, min: u32) -> Self {
+    pub fn new(current: u64, open: u64, max: u64, min: u64) -> Self {
         assert!(max >= min, "Max has to be greater or equals to min!");
         assert!(
             max >= current && current >= min,
@@ -84,7 +65,7 @@ impl Value {
     }
 
     /// New Value from cent.
-    pub fn from_current(current: u32) -> Self {
+    pub fn from_current(current: u64) -> Self {
         Self {
             current,
             open: current,
@@ -93,18 +74,18 @@ impl Value {
         }
     }
 
-    pub fn current(&self) -> u32 {
+    pub fn current(&self) -> u64 {
         self.current
     }
 
-    pub fn update_current_value(&mut self, new_current: u32) {
+    pub fn update_current_value(&mut self, new_current: u64) {
         self.current = new_current;
         self.min = self.min.min(new_current);
         self.max = self.max.max(new_current);
     }
 
-    pub fn calculate_change_abs(&self) -> i32 {
-        self.current as i32 - self.open as i32
+    pub fn calculate_change_abs(&self) -> i64 {
+        self.current as i64 - self.open as i64
     }
 
     /// Calculate the percentage change.
@@ -114,28 +95,28 @@ impl Value {
     /// `100 % = 10000`
     /// `150.25 % = 15025`
     /// `150.2581 % = 15025`
-    pub fn calculate_change_percentage(&self) -> i32 {
-        /// Percent in i32 with two decimal places.
+    pub fn calculate_change_percentage(&self) -> i64 {
+        /// Percent in i64 with two decimal places.
         ///
         /// `100 % = 10000`
         /// `150.25 % = 15025`
-        const MULTIPLICATOR: i32 = 10_000;
-        (self.current as i32 - self.open as i32) * MULTIPLICATOR / self.open as i32
+        const MULTIPLICATOR: i64 = 10_000;
+        (self.current as i64 - self.open as i64) * MULTIPLICATOR / self.open as i64
     }
 
-    pub fn open(&self) -> u32 {
+    pub fn open(&self) -> u64 {
         self.open
     }
 
-    pub fn max(&self) -> u32 {
+    pub fn max(&self) -> u64 {
         self.max
     }
 
-    pub fn min(&self) -> u32 {
+    pub fn min(&self) -> u64 {
         self.min
     }
 
-    pub fn close_candle(&mut self, new_current: u32) -> Candle {
+    pub fn close_candle(&mut self, new_current: u64) -> Candle {
         let candle = Candle::new(self.open, self.current, self.max, self.min);
 
         self.open = new_current;
@@ -158,8 +139,8 @@ impl Value {
     }
 }
 
-impl Performance {
-    pub fn new(change_abs: i32, change_percent: i32) -> Self {
+impl SharePerformance {
+    pub fn new(change_abs: i64, change_percent: i64) -> Self {
         Self {
             change_abs,
             change_percent,
@@ -171,7 +152,7 @@ impl Performance {
     /// Update the change.
     ///
     /// Takes the format that [`Value`] puts out.
-    pub fn update_change(&mut self, abs: i32, percent: i32) {
+    pub fn update_change(&mut self, abs: i64, percent: i64) {
         self.change_abs = abs;
         self.change_percent = percent;
         self.volatility = self.calculate_volatility(DEFAULT_CANDLE_HISTORY_SIZE);
@@ -193,19 +174,19 @@ impl Performance {
         old_candle
     }
 
-    pub fn change_abs(&self) -> i32 {
+    pub fn change_abs(&self) -> i64 {
         self.change_abs
     }
 
-    pub fn change_percent(&self) -> i32 {
+    pub fn change_percent(&self) -> i64 {
         self.change_percent
     }
 
-    pub fn volatility(&self) -> i32 {
+    pub fn volatility(&self) -> i64 {
         self.volatility
     }
 
-    pub fn calculate_volatility(&self, candles: usize) -> i32 {
+    pub fn calculate_volatility(&self, candles: usize) -> i64 {
         if self.history.is_empty() {
             return 0;
         };
@@ -215,15 +196,15 @@ impl Performance {
             .iter()
             .take(candles)
             .map(|candle| candle.close());
-        let count = iter.clone().count() as i32;
+        let count = iter.clone().count() as i64;
         let mean = iter
             .clone()
-            .fold(0i32, |acc, close| acc + close as i32)
+            .fold(0i64, |acc, close| acc + close as i64)
             .wrapping_div(count);
         let variance = iter
-            .map(|close| close as i32 - mean)
+            .map(|close| close as i64 - mean)
             .map(|deviation| deviation.pow(2) / 100)
-            .sum::<i32>()
+            .sum::<i64>()
             .wrapping_div(count);
         (variance * 100).isqrt() // Scale the variance up to not leave a decimal point behind.
     }
@@ -231,32 +212,32 @@ impl Performance {
 
 #[cfg(test)]
 mod stock_test {
-    use crate::market::{chart::Candle, stock::Performance};
+    use crate::market::{chart::Candle, stock::SharePerformance};
 
     #[test]
     fn volatility_calculation_test() {
-        let mut perf = Performance::new(0, 0);
+        let mut perf = SharePerformance::new(0, 0);
         let v = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
         for v in v.iter() {
             perf.push_candle(Candle::new(*v, *v, *v, *v));
         }
 
-        assert_eq!(5500, v.iter().sum::<u32>());
-        let mean = v.iter().fold(0, |acc, x| acc + x) / v.len() as u32;
+        assert_eq!(5500, v.iter().sum::<u64>());
+        let mean = v.iter().fold(0, |acc, x| acc + x) / v.len() as u64;
         assert_eq!(550, mean);
-        let deviation = v.iter().map(|x| *x as i32 - mean as i32);
+        let deviation = v.iter().map(|x| *x as i64 - mean as i64);
         assert_eq!(
             vec![-450, -350, -250, -150, -50, 50, 150, 250, 350, 450],
-            deviation.clone().collect::<Vec<i32>>()
+            deviation.clone().collect::<Vec<i64>>()
         );
-        let deviation_squared = deviation.map(|x| x.pow(2) as u32 / 100);
+        let deviation_squared = deviation.map(|x| x.pow(2) as u64 / 100);
         assert_eq!(
             vec![2025, 1225, 625, 225, 25, 25, 225, 625, 1225, 2025],
-            deviation_squared.clone().collect::<Vec<u32>>()
+            deviation_squared.clone().collect::<Vec<u64>>()
         );
-        let deviation_squared_sum = deviation_squared.sum::<u32>();
+        let deviation_squared_sum = deviation_squared.sum::<u64>();
         assert_eq!(8250, deviation_squared_sum);
-        let variance = deviation_squared_sum / v.len() as u32;
+        let variance = deviation_squared_sum / v.len() as u64;
         assert_eq!(825, variance);
         let standart_deviation = (variance * 100).isqrt();
         assert_eq!(287, standart_deviation);

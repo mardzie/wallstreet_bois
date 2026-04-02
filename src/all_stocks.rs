@@ -1,6 +1,6 @@
-use crate::market::sector::Sector;
+use crate::companies::sector::Sector;
 
-pub const ALL_STOCKS: &[(&str, &str, &str, Sector, u32)] = &[
+pub const ALL_STOCKS: &[(&str, &str, &str, Sector, u64)] = &[
     (
         "Tesla Inc",
         "TSLA",
